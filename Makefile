@@ -2,11 +2,12 @@ ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 INCLUDE=$(ROOT_DIR)/include
 CFLAGS=-g -I$(INCLUDE)
+OBJECTS=glad.o stb_image.o shader.o texture.o resource_manager.o sprite_renderer.o game.o
 LINKFLAGS=-ldl -lglfw
 TARGET=breakout
 
-breakout.out:glad.o stb_image.o shader.o texture.o resource_manager.o sprite_renderer.o game.o
-	g++ breakout.cpp glad.o stb_image.o shader.o texture.o resource_manager.o sprite_renderer.o game.o $(LINKFLAGS) $(CFLAGS) -o breakout.out
+breakout.out:$(OBJECTS)
+	g++ breakout.cpp $(OBJECTS) $(LINKFLAGS) $(CFLAGS) -o breakout.out
 
 prun:pclean $(TARGET).out
 	$(bash) ./$(TARGET).out
@@ -24,19 +25,19 @@ stb_image.o:
 	g++ -c $(INCLUDE)/stb_image/stb_image.cpp -o stb_image.o
 
 shader.o:
-	g++ -c shader.cpp $(LINKFLAGS) $(CFLAGS) -o shader.o
+	g++ -c shader.cpp $(CFLAGS) -o shader.o
 
 texture.o:
-	g++ -c texture.cpp $(LINKFLAGS) $(CFLAGS) -o texture.o
+	g++ -c texture.cpp $(CFLAGS) -o texture.o
 
 resource_manager.o:
-	g++ -c resource_manager.cpp $(LINKFLAGS) $(CFLAGS) -o resource_manager.o
+	g++ -c resource_manager.cpp $(CFLAGS) -o resource_manager.o
 
 sprite_renderer.o:
-	g++ -c sprite_renderer.cpp $(LINKFLAGS) $(CFLAGS) -o sprite_renderer.o
+	g++ -c sprite_renderer.cpp $(CFLAGS) -o sprite_renderer.o
 
 game.o:
-	g++ -c game.cpp $(LINKFLAGS) $(CFLAGS) -o game.o
+	g++ -c game.cpp $(CFLAGS) -o game.o
 
 .PHONY:clean
 clean:
