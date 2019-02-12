@@ -91,14 +91,14 @@ Texture2D ResourceManager::loadTextureFromFile(const GLchar* file) {
         texture.Internal_Format = GL_RGBA;
         texture.Image_Format = GL_RGBA;
     } else {
-        std::cout << "ERROR::TEXTURE: Unsupported number of channels ( " << numChannels << " )" << std::endl;
+        std::cout << "ERROR::TEXTURE: Unsupported number of channels ( " << numChannels << " ) in file: " << file << std::endl;
     }
 
     //  if data exists create texture
     if (image) {
        texture.Generate(width, height, image);
     } else {
-        std::cout << "ERROR::TEXTURE: Failed to read texture files" << std::endl;
+        std::cout << "ERROR::TEXTURE: Failed to read texture file: " << file << std::endl;
     }
     stbi_image_free(image);
     return texture;

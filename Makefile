@@ -2,7 +2,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 INCLUDE=$(ROOT_DIR)/include
 CFLAGS=-g -I$(INCLUDE)
-OBJECTS=glad.o stb_image.o shader.o texture.o resource_manager.o sprite_renderer.o game.o
+OBJECTS=glad.o stb_image.o shader.o texture.o resource_manager.o sprite_renderer.o game_object.o game_level.o game.o
 LINKFLAGS=-ldl -lglfw
 TARGET=breakout
 
@@ -35,6 +35,12 @@ resource_manager.o:
 
 sprite_renderer.o:
 	g++ -c sprite_renderer.cpp $(CFLAGS) -o sprite_renderer.o
+
+game_object.o:
+	g++ -c game_object.cpp $(CFLAGS) -o game_object.o
+
+game_level.o:
+	g++ -c game_level.cpp $(CFLAGS) -o game_level.o
 
 game.o:
 	g++ -c game.cpp $(CFLAGS) -o game.o
