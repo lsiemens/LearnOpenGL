@@ -10,14 +10,17 @@
 #include "game.h"
 #include "resource_manager.h"
 #include "sprite_renderer.h"
+#include "post_processor.h"
+#include "particle_generator.h"
 #include "game_object.h"
 #include "ball_object.h"
-#include "particle_generator.h"
 
 GameObject* Player;
 BallObject* Ball;
 SpriteRenderer* Renderer;
 ParticleGenerator* Particles;
+PostProcessor* Effects;
+GLfloat ShakeTime = 0.0f;
 
 GLboolean CheckCollision(GameObject &one, GameObject &two);
 Collision CheckCollision(BallObject &ball, GameObject &box);
@@ -32,12 +35,14 @@ Game::~Game() {
     delete Ball;
     delete Player;
     delete Particles;
+    delete Effects;
 }
 
 void Game::Init() {
     // Load shaders
     ResourceManager::LoadShader("shaders/sprite.vert", "shaders/sprite.frag", nullptr, "sprite");
     ResourceManager::LoadShader("shaders/particle.vert", "shaders/particle.frag", nullptr, "particle");
+    ResourceManager::LoadShader("shaders/post_processing.vert", "shaders/post_processing.frag", nullptr, "postprocessing");
 
     // Load Textures
     ResourceManager::LoadTexture("textures/background.jpg", "background");
@@ -77,9 +82,22 @@ void Game::Init() {
 
     Particles = new ParticleGenerator(ResourceManager::GetShader("particle"), ResourceManager::GetTexture("particle"), 500);
     Renderer = new SpriteRenderer(ResourceManager::GetShader("sprite"));
+    Effects = new PostProcessor(ResourceManager::GetShader("postprocessing"), this->Width, this->Height);
+
+    // Debug Testing options
+    //Effects->Shake = GL_TRUE;
+    //Effects->Confuse = GL_TRUE;
+    //Effects->Chaos = GL_TRUE;
 }
 
 void Game::Update(GLfloat dt) {
+
+    if (ShakeTime > 0.0f) {
+        ShakeTime -= dt;
+        if (ShakeTime <= 0.0f)
+            Effects->Shake = false;
+    }
+
     Ball->Move(dt, this->Width);
     this->DoCollisions();
 
@@ -118,8 +136,12 @@ void Game::DoCollisions() {
             Collision collision = CheckCollision(*Ball, box);
             if (std::get<0>(collision)) { // If collision is true
                 // Destroy block if not solid
-                if (!box.IsSolid)
+                if (!box.IsSolid) {
                     box.Destroyed = GL_TRUE;
+                } else {
+                    ShakeTime = 0.05f;
+                    Effects->Shake = true;
+                }
                 // Collision resolution
                 Direction dir = std::get<1>(collision);
                 glm::vec2 diff_vector = std::get<2>(collision);
@@ -165,16 +187,22 @@ void Game::DoCollisions() {
 
 void Game::Render() {
     if(this->State == GAME_ACTIVE) {
-        // render order (0:background, 1:ball, 2:blocks, 3:particles, 4:player)
+        // configure OpenGL to render off screen
+        Effects->BeginRender();
+            // render order (0:background, 1:ball, 2:blocks, 3:particles, 4:player)
 
-        // Background
-        Renderer->DrawSprite(ResourceManager::GetTexture("background"), glm::vec2(0, 0), glm::vec2(this->Width, this->Height), 0.0f);
+            // Background
+            Renderer->DrawSprite(ResourceManager::GetTexture("background"), glm::vec2(0, 0), glm::vec2(this->Width, this->Height), 0.0f);
 
-        // Objects
-        Particles->Draw();
-        Ball->Draw(*Renderer);
-        this->Levels[this->Level].Draw(*Renderer);
-        Player->Draw(*Renderer);
+            // Objects
+            Particles->Draw();
+            Ball->Draw(*Renderer);
+            this->Levels[this->Level].Draw(*Renderer);
+            Player->Draw(*Renderer);
+        // save render to texture and return OpenGL configuration to standard render
+        Effects->EndRender();
+        // render prerenderd scene to screen using postprocessing shaders
+        Effects->Render(glfwGetTime());
     }
 }
 

@@ -5,7 +5,7 @@ CFLAGS=-g -I$(INCLUDE)
 LINKFLAGS=-ldl -lglfw
 TARGET=breakout
 OBJECTS=glad.o stb_image.o shader.o texture.o resource_manager.o sprite_renderer.o \
-        particle_generator.o game_object.o ball_object.o game_level.o game.o
+        post_processor.o particle_generator.o game_object.o ball_object.o game_level.o game.o
 
 breakout.out:$(OBJECTS)
 	g++ breakout.cpp $(OBJECTS) $(LINKFLAGS) $(CFLAGS) -o breakout.out
@@ -36,6 +36,9 @@ resource_manager.o:
 
 sprite_renderer.o:
 	g++ -c sprite_renderer.cpp $(CFLAGS) -o sprite_renderer.o
+
+post_processor.o:
+	g++ -c post_processor.cpp $(CFLAGS) -o post_processor.o
 
 particle_generator.o:
 	g++ -c particle_generator.cpp $(CFLAGS) -o particle_generator.o
