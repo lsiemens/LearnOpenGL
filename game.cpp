@@ -7,9 +7,13 @@
 ** option) any later version.
 ******************************************************************/
 #include <algorithm>
+#include <sstream>
+
+#include <irrklang/irrKlang.h>
 
 #include "game.h"
 #include "resource_manager.h"
+#include "text_renderer.h"
 #include "sprite_renderer.h"
 #include "post_processor.h"
 #include "particle_generator.h"
@@ -21,6 +25,8 @@ BallObject* Ball;
 SpriteRenderer* Renderer;
 ParticleGenerator* Particles;
 PostProcessor* Effects;
+TextRenderer* Text;
+irrklang::ISoundEngine* SoundEngine = irrklang::createIrrKlangDevice();
 GLfloat ShakeTime = 0.0f;
 
 GLboolean ShouldSpawn(GLuint chance);
@@ -40,6 +46,8 @@ Game::~Game() {
     delete Player;
     delete Particles;
     delete Effects;
+    delete Text;
+    SoundEngine->drop();
 }
 
 void Game::Init() {
@@ -93,14 +101,45 @@ void Game::Init() {
     Particles = new ParticleGenerator(ResourceManager::GetShader("particle"), ResourceManager::GetTexture("particle"), 500);
     Renderer = new SpriteRenderer(ResourceManager::GetShader("sprite"));
     Effects = new PostProcessor(ResourceManager::GetShader("postprocessing"), this->Width, this->Height);
+    Text = new TextRenderer(this->Width, this->Height);
+    Text->Load("fonts/OCRAEXT.TTF", 24);
 
-    // Debug Testing options
-    //Effects->Shake = GL_TRUE;
-    //Effects->Confuse = GL_TRUE;
-    //Effects->Chaos = GL_TRUE;
+    // audio
+    SoundEngine->play2D("audio/breakout.mp3", GL_TRUE);
 }
 
 void Game::ProcessInput(GLfloat dt) {
+    if (this->State == GAME_MENU) {
+        if (this->Keys[GLFW_KEY_ENTER] && !this->KeysProcessed[GLFW_KEY_ENTER])
+        {
+            this->State = GAME_ACTIVE;
+            this->KeysProcessed[GLFW_KEY_ENTER] = GL_TRUE;
+        }
+        if (this->Keys[GLFW_KEY_W] && !this->KeysProcessed[GLFW_KEY_W])
+        {
+            this->Level = (this->Level + 1) % 4;
+            this->KeysProcessed[GLFW_KEY_W] = GL_TRUE;
+        }
+        if (this->Keys[GLFW_KEY_S] && !this->KeysProcessed[GLFW_KEY_S])
+        {
+            if (this->Level > 0)
+                --this->Level;
+            else
+                this->Level = 3;
+            this->KeysProcessed[GLFW_KEY_S] = GL_TRUE;
+        }
+    }
+
+    if (this->State == GAME_WIN)
+    {
+        if (this->Keys[GLFW_KEY_ENTER])
+        {
+            this->KeysProcessed[GLFW_KEY_ENTER] = GL_TRUE;
+            Effects->Chaos = GL_FALSE;
+            this->State = GAME_MENU;
+        }
+    }
+
     if (this->State == GAME_ACTIVE) {
         GLfloat velocity = PLAYER_VELOCITY*dt;
 
@@ -116,7 +155,7 @@ void Game::ProcessInput(GLfloat dt) {
         }
 
         if (this->Keys[GLFW_KEY_SPACE]) {
-            Ball->Stuck = false;
+            Ball->Stuck = GL_FALSE;
         }
     }
 }
@@ -133,14 +172,26 @@ void Game::Update(GLfloat dt) {
             Effects->Shake = false;
     }
 
+    // ball loss condition
     if (Ball->Position.y >= this->Height) {
+        --this->Lives;
+        if (this->Lives == 0) {
+            this->ResetLevel();
+            this->State = GAME_MENU;
+        }
+        this->ResetPlayer();
+    }
+
+    if (this->State == GAME_ACTIVE && this->Levels[this->Level].IsCompleted()) {
         this->ResetLevel();
         this->ResetPlayer();
+        Effects->Chaos = GL_TRUE;
+        this->State = GAME_WIN;
     }
 }
 
 void Game::Render() {
-    if(this->State == GAME_ACTIVE) {
+    if (this->State == GAME_ACTIVE || this->State == GAME_MENU || this->State == GAME_WIN) {
         // configure OpenGL to render off screen
         Effects->BeginRender();
             // Background
@@ -159,6 +210,19 @@ void Game::Render() {
         Effects->EndRender();
         // render prerenderd scene to screen using postprocessing shaders
         Effects->Render(glfwGetTime());
+        // dont include the text in the postprocessing
+        std::stringstream stream_lives; stream_lives << this->Lives;
+        Text->RenderText("Lives:" + stream_lives.str(), 5.0f, 5.0f, 1.0f);
+    }
+
+    if (this->State == GAME_MENU) {
+        Text->RenderText("Press ENTER to start", 250.0f, this->Height / 2, 1.0f);
+        Text->RenderText("Press W or S to select level", 245.0f, this->Height / 2 + 20.0f, 0.75f);
+    }
+
+    if (this->State == GAME_WIN) {
+        Text->RenderText("You WON!!!", 320.0f, this->Height / 2 - 20.0f, 1.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+        Text->RenderText("Press ENTER to retry or ESC to quit", 130.0f, this->Height / 2, 1.0f, glm::vec3(1.0f, 1.0f, 0.0f));
     }
 }
 
@@ -171,9 +235,11 @@ void Game::DoCollisions() {
                 if (!box.IsSolid) {
                     box.Destroyed = GL_TRUE;
                     this->SpawnPowerUps(box);
+                    SoundEngine->play2D("audio/bleep.mp3", GL_FALSE);
                 } else {
                     ShakeTime = 0.05f;
                     Effects->Shake = true;
+                    SoundEngine->play2D("audio/solid.wav", GL_FALSE);
                 }
                 // Collision resolution
                 Direction dir = std::get<1>(collision);
@@ -211,6 +277,7 @@ void Game::DoCollisions() {
                 ActivatePowerUp(powerUp);
                 powerUp.Destroyed = GL_TRUE;
                 powerUp.Activated = GL_TRUE;
+                SoundEngine->play2D("audio/powerup.wav", GL_FALSE);
             }
         }
     }
@@ -234,6 +301,8 @@ void Game::DoCollisions() {
 
         // If Sticky powerup is activated, also stick ball to paddle once new velocity vectors were calculated
         Ball->Stuck = Ball->Sticky;
+
+        SoundEngine->play2D("audio/bleep.wav", GL_FALSE);
     }
 }
 
@@ -247,6 +316,8 @@ void Game::ResetLevel() {
     } else if (this->Level == 3) {
         this->Levels[3].Load("levels/four.lvl", this->Width, this->Height * 0.5f);
     }
+
+    this->Lives = 3;
 }
 
 void Game::ResetPlayer() {
