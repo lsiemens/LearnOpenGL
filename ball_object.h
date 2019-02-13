@@ -21,6 +21,7 @@ class BallObject : public GameObject {
 public:
     GLfloat Radius;
     GLboolean Stuck;
+    GLboolean Sticky, PassThrough;
 
     // constructors
     BallObject();

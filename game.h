@@ -10,11 +10,16 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include <vector>
+#include <tuple>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
+#include "game_object.h"
 #include "game_level.h"
+#include "power_up.h"
 
 enum GameState {
     GAME_ACTIVE,
@@ -51,6 +56,8 @@ public:
     std::vector<GameLevel> Levels;
     GLuint Level;
 
+    std::vector<PowerUp> PowerUps;
+
     // class constructor destructor
     Game(GLuint width, GLuint height);
     ~Game();
@@ -67,6 +74,10 @@ public:
     // Reset
     void ResetLevel();
     void ResetPlayer();
+
+    // PowerUps
+    void SpawnPowerUps(GameObject &block);
+    void UpdatePowerUps(GLfloat dt);
 };
 
 #endif
