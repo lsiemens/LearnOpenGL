@@ -69,7 +69,7 @@ void ParticleGenerator::init()
         0.0f, 1.0f, 0.0f, 1.0f,
         1.0f, 1.0f, 1.0f, 1.0f,
         1.0f, 0.0f, 1.0f, 0.0f
-    }; 
+    };
     glGenVertexArrays(1, &this->VAO);
     glGenBuffers(1, &VBO);
     glBindVertexArray(this->VAO);
@@ -78,7 +78,7 @@ void ParticleGenerator::init()
     glBufferData(GL_ARRAY_BUFFER, sizeof(particle_quad), particle_quad, GL_STATIC_DRAW);
     // Set mesh attributes
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid*)0);
+    glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), (GLvoid*)0);
     glBindVertexArray(0);
 
     // Create this->amount default particle instances
@@ -109,8 +109,7 @@ GLuint ParticleGenerator::firstUnusedParticle()
     return 0;
 }
 
-void ParticleGenerator::respawnParticle(Particle &particle, GameObject &object, glm::vec2 offset)
-{
+void ParticleGenerator::respawnParticle(Particle &particle, GameObject &object, glm::vec2 offset) {
     GLfloat random = ((rand() % 100) - 50) / 10.0f;
     GLfloat rColor = 0.5 + ((rand() % 100) / 100.0f);
     particle.Position = object.Position + random + offset;
@@ -118,5 +117,3 @@ void ParticleGenerator::respawnParticle(Particle &particle, GameObject &object, 
     particle.Life = 1.0f;
     particle.Velocity = object.Velocity * 0.1f;
 }
-
-

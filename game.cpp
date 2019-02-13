@@ -47,11 +47,12 @@ void Game::Init() {
     ResourceManager::LoadTexture("textures/block_solid.png", "block_solid");
     ResourceManager::LoadTexture("textures/particle.png", "particle");
 
-
     // pass data to GPU glUniform
     glm::mat4 projection = glm::ortho(0.0f, static_cast<GLfloat>(this->Width), static_cast<GLfloat>(this->Height), 0.0f, -1.0f, 1.0f);
     ResourceManager::GetShader("sprite").Use().SetInteger("image", 0);
     ResourceManager::GetShader("sprite").SetMatrix4("projection", projection);
+    ResourceManager::GetShader("particle").Use().SetInteger("sprite", 0);
+    ResourceManager::GetShader("particle").SetMatrix4("projection", projection);
 
     // initalize Levels
     GameLevel one, two, three, four;
@@ -170,9 +171,9 @@ void Game::Render() {
         Renderer->DrawSprite(ResourceManager::GetTexture("background"), glm::vec2(0, 0), glm::vec2(this->Width, this->Height), 0.0f);
 
         // Objects
+        Particles->Draw();
         Ball->Draw(*Renderer);
         this->Levels[this->Level].Draw(*Renderer);
-        Particles->Draw();
         Player->Draw(*Renderer);
     }
 }

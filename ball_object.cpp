@@ -8,8 +8,6 @@
 ******************************************************************/
 #include "ball_object.h"
 
-#include <iostream> //-------------------------------------
-
 BallObject::BallObject() {
 }
 
@@ -17,9 +15,6 @@ BallObject::BallObject(glm::vec2 pos, GLfloat radius, glm::vec2 velocity, Textur
     : GameObject(pos, glm::vec2(radius*2, radius*2), sprite, glm::vec3(1.0f), velocity), Radius(radius), Stuck(true) { }
 
 glm::vec2 BallObject::Move(GLfloat dt, GLuint window_width) {
-    //--------------------------------------------------------
-//    std::cout << this->Position.x << "," << this->Position.y << "\n";
-    //--------------------------------------------------------
     if (!this->Stuck) {
         this->Position += this->Velocity*dt;
         if (this->Position.x <= 0.0f) {
@@ -34,12 +29,6 @@ glm::vec2 BallObject::Move(GLfloat dt, GLuint window_width) {
             this->Velocity.y = -this->Velocity.y;
             this->Position.y = 0.0f;
         }
-        //--------------------------------------------------
-        else if (this->Position.y + this->Size.y >= 660.0f) {
-            this->Velocity.y = -this->Velocity.y;
-            this->Position.y = 660.0f - this->Size.y;
-        }
-        //----------------------------------------------
     } else {
 
     }
