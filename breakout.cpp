@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
     GLfloat deltaTime = 0.0f;
     GLfloat lastFrame = 0.0f;
 
-    Breakout.State = GAME_ACTIVE;
+    Breakout.State = GAME_MENU;
 
     //Game Loop
     while (!glfwWindowShouldClose(window)) {
@@ -94,5 +94,6 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             Breakout.Keys[key] = GL_TRUE;
         else if (action==GLFW_RELEASE)
             Breakout.Keys[key] = GL_FALSE;
+            Breakout.KeysProcessed[key] = GL_FALSE;
     }
 }

@@ -8,6 +8,7 @@
 ******************************************************************/
 #include <algorithm>
 #include <sstream>
+#include <iostream>
 
 #include <irrklang/irrKlang.h>
 
@@ -37,8 +38,7 @@ Collision CheckCollision(BallObject &one, GameObject &two);
 Direction VectorDirection(glm::vec2 target);
 
 Game::Game(GLuint width, GLuint height)
-    : State(GAME_ACTIVE), Keys(), Width(width), Height(height) {
-}
+    : State(GAME_ACTIVE), Keys(), Width(width), Height(height), Level(0), Lives(3) { }
 
 Game::~Game() {
     delete Renderer;
@@ -105,7 +105,8 @@ void Game::Init() {
     Text->Load("fonts/OCRAEXT.TTF", 24);
 
     // audio
-    SoundEngine->play2D("audio/breakout.mp3", GL_TRUE);
+    if (!MUTE_AUDIO)
+        SoundEngine->play2D("audio/breakout.mp3", GL_TRUE);
 }
 
 void Game::ProcessInput(GLfloat dt) {
@@ -135,6 +136,16 @@ void Game::ProcessInput(GLfloat dt) {
         if (this->Keys[GLFW_KEY_ENTER])
         {
             this->KeysProcessed[GLFW_KEY_ENTER] = GL_TRUE;
+            Effects->Confuse = GL_FALSE;
+            this->State = GAME_MENU;
+        }
+    }
+
+    if (this->State == GAME_LOSS)
+    {
+        if (this->Keys[GLFW_KEY_ENTER])
+        {
+            this->KeysProcessed[GLFW_KEY_ENTER] = GL_TRUE;
             Effects->Chaos = GL_FALSE;
             this->State = GAME_MENU;
         }
@@ -147,11 +158,15 @@ void Game::ProcessInput(GLfloat dt) {
         if (this->Keys[GLFW_KEY_A]) {
             if (Player->Position.x >= 0)
                 Player->Position.x -= velocity;
+                if (Ball->Stuck)
+                    Ball->Position.x -= velocity;
         }
 
         if (this->Keys[GLFW_KEY_D]) {
             if (Player->Position.x <= this->Width - Player->Size.x)
                 Player->Position.x += velocity;
+                if (Ball->Stuck)
+                    Ball->Position.x += velocity;
         }
 
         if (this->Keys[GLFW_KEY_SPACE]) {
@@ -175,11 +190,12 @@ void Game::Update(GLfloat dt) {
     // ball loss condition
     if (Ball->Position.y >= this->Height) {
         --this->Lives;
+        this->ResetPlayer();
         if (this->Lives == 0) {
             this->ResetLevel();
-            this->State = GAME_MENU;
+            this->State = GAME_LOSS;
+            Effects->Confuse = GL_TRUE;
         }
-        this->ResetPlayer();
     }
 
     if (this->State == GAME_ACTIVE && this->Levels[this->Level].IsCompleted()) {
@@ -191,26 +207,26 @@ void Game::Update(GLfloat dt) {
 }
 
 void Game::Render() {
-    if (this->State == GAME_ACTIVE || this->State == GAME_MENU || this->State == GAME_WIN) {
-        // configure OpenGL to render off screen
-        Effects->BeginRender();
-            // Background
-            Renderer->DrawSprite(ResourceManager::GetTexture("background"), glm::vec2(0, 0), glm::vec2(this->Width, this->Height), 0.0f);
+    // configure OpenGL to render off screen
+    Effects->BeginRender();
+        // Background
+        Renderer->DrawSprite(ResourceManager::GetTexture("background"), glm::vec2(0, 0), glm::vec2(this->Width, this->Height), 0.0f);
 
-            // Objects
-            Particles->Draw();
-            Ball->Draw(*Renderer);
-            this->Levels[this->Level].Draw(*Renderer);
-            for (PowerUp &powerUp : this->PowerUps) {
-                if (!powerUp.Destroyed)
-                    powerUp.Draw(*Renderer);
-            }
-            Player->Draw(*Renderer);
-        // save render to texture and return OpenGL configuration to standard render
-        Effects->EndRender();
-        // render prerenderd scene to screen using postprocessing shaders
-        Effects->Render(glfwGetTime());
-        // dont include the text in the postprocessing
+        // Objects
+        Particles->Draw();
+        Ball->Draw(*Renderer);
+        this->Levels[this->Level].Draw(*Renderer);
+        for (PowerUp &powerUp : this->PowerUps) {
+            if (!powerUp.Destroyed)
+                powerUp.Draw(*Renderer);
+        }
+        Player->Draw(*Renderer);
+    // save render to texture and return OpenGL configuration to standard render
+    Effects->EndRender();
+    // render prerenderd scene to screen using postprocessing shaders
+    Effects->Render(glfwGetTime());
+    // dont include the text in the postprocessing
+    if (this->State == GAME_ACTIVE) {
         std::stringstream stream_lives; stream_lives << this->Lives;
         Text->RenderText("Lives:" + stream_lives.str(), 5.0f, 5.0f, 1.0f);
     }
@@ -218,6 +234,11 @@ void Game::Render() {
     if (this->State == GAME_MENU) {
         Text->RenderText("Press ENTER to start", 250.0f, this->Height / 2, 1.0f);
         Text->RenderText("Press W or S to select level", 245.0f, this->Height / 2 + 20.0f, 0.75f);
+    }
+
+    if (this->State == GAME_LOSS) {
+        Text->RenderText("You LOST :(", 320.0f, this->Height / 2 - 20.0f, 1.0f, glm::vec3(1.0f, 0.0f, 1.0f));
+        Text->RenderText("Press ENTER to retry or ESC to quit", 130.0f, this->Height / 2, 1.0f, glm::vec3(0.0f, 0.0f, 1.0f));
     }
 
     if (this->State == GAME_WIN) {
@@ -235,11 +256,13 @@ void Game::DoCollisions() {
                 if (!box.IsSolid) {
                     box.Destroyed = GL_TRUE;
                     this->SpawnPowerUps(box);
-                    SoundEngine->play2D("audio/bleep.mp3", GL_FALSE);
+                    if (!MUTE_AUDIO)
+                        SoundEngine->play2D("audio/bleep.mp3", GL_FALSE);
                 } else {
                     ShakeTime = 0.05f;
                     Effects->Shake = true;
-                    SoundEngine->play2D("audio/solid.wav", GL_FALSE);
+                    if (!MUTE_AUDIO)
+                        SoundEngine->play2D("audio/solid.wav", GL_FALSE);
                 }
                 // Collision resolution
                 Direction dir = std::get<1>(collision);
@@ -277,7 +300,8 @@ void Game::DoCollisions() {
                 ActivatePowerUp(powerUp);
                 powerUp.Destroyed = GL_TRUE;
                 powerUp.Activated = GL_TRUE;
-                SoundEngine->play2D("audio/powerup.wav", GL_FALSE);
+                if (!MUTE_AUDIO)
+                    SoundEngine->play2D("audio/powerup.wav", GL_FALSE);
             }
         }
     }
@@ -302,7 +326,8 @@ void Game::DoCollisions() {
         // If Sticky powerup is activated, also stick ball to paddle once new velocity vectors were calculated
         Ball->Stuck = Ball->Sticky;
 
-        SoundEngine->play2D("audio/bleep.wav", GL_FALSE);
+        if (!MUTE_AUDIO)
+            SoundEngine->play2D("audio/bleep.wav", GL_FALSE);
     }
 }
 

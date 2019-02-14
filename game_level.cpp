@@ -42,7 +42,11 @@ void GameLevel::Draw(SpriteRenderer &renderer) {
 }
 
 GLboolean GameLevel::IsCompleted() {
-
+    for (GameObject &tile : this->Bricks) {
+        if (!tile.IsSolid && !tile.Destroyed)
+            return GL_FALSE;
+    }
+    return GL_TRUE;
 }
 
 void GameLevel::init(std::vector<std::vector<GLuint>> tileData, GLuint levelWidth, GLuint levelHeight) {
